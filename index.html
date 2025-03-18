@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Markdown to PDF</title>
+
+  <style>
+    body {
+      display: flex;
+      margin: 0;
+      font-family: sans-serif;
+      height: 100vh;
+    }
+    .container {
+      display: flex;
+      flex: 1;
+      flex-direction: row;
+      gap: 20px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .editor, .preview {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .editor textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      resize: none;
+      outline: none;
+      font-family: monospace;
+    }
+    .preview-content {
+      width: 100%;
+    }
+    .export-btn {
+      margin-top: 10px;
+      padding: 8px;
+      cursor: pointer;
+      border: none;
+      background-color: #eee;
+    }
+    .export-btn:hover {
+      background-color: #ddd;
+    }
+	
+	@page {
+	size: A4 portrait;
+	margin: 50pt;
+	}
+	
+    /* Evita di spezzare paragrafi e titoli, e giustifica i paragrafi */
+    /* .preview-content p, */
+    .preview-content h1,
+    .preview-content h2,
+    .preview-content h3,
+    .preview-content h4,
+    .preview-content h5,
+    .preview-content h6 {
+      page-break-inside: avoid; /* Evita la divisione del blocco */
+      -webkit-page-break-inside: avoid;
+    }
+    .preview-content p {
+      text-align: justify;
+	  font-size: 12pt;
+      line-height: 16pt; /* sarebbe 16.86pt - ho messo un valore vicino */
+      orphans: 1;
+      widows: 1;
+      page-break-inside: avoid;	  
+    }
+	
+	/* Per forzare una nuova pagina con un certo tag, ad esempio h2: */
+    .preview-content h2 {
+      page-break-before: always;
+      -webkit-page-break-before: always;
+      break-before: page;
+    }
+    
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Sezione Editor Markdown -->
+  <div class="editor">
+    <h3>Markdown</h3>
+    <textarea id="md-input" oninput="updatePreview()">
+# Istruzioni per l'uso
+Il funzionamento di questa App è molto semplice.
+1) Copia il testo Markdown in questa finestra.
+2) Controlla l'anteprima nella finestra accanto.
+3) Scorri il testo della finestra accanto fino ad arrivare in fondo.
+4) Clicca su Esporta in PDF.
+5) Se il documento non ha un titolo, ti verrà chiesto che titolo inserire.
+6) Il titolo sarà aggiunto nell'anteprima.
+7) Verrà generato un file PDF con il nome uguale al titolo inserito.
+
+## Note
+Nel caso non venga inserito un titolo, quando viene richiesto, il file sarà nominato "Documento_senza_titolo"
+
+## Attenzione
+Il documento potrebbe non avere una impaginazione perfetta.
+
+### This project is licensed under GPL-3.0
+
+    </textarea>
+  </div>
+
+  <!-- Sezione Preview HTML -->
+  <div class="preview">
+    <h3>PDF PReview</h3>
+    <div id="preview" class="preview-content">
+      <!-- Qui apparirà l'HTML convertito da Markdown -->
+    </div>
+    <button class="export-btn" onclick="exportPDF()">Esporta in PDF</button>
+  </div>
+</div>
+
+<!-- Libreria Marked (per conversione Markdown -> HTML) -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!-- Libreria html2pdf (per conversione HTML -> PDF) -->
+<script src="https://raw.githack.com/eKoopmans/html2pdf/master/dist/html2pdf.bundle.js"></script>
+
+<script>
+  /**
+   * Aggiorna l'anteprima convertendo il contenuto Markdown (nel textarea)
+   * in HTML e inserendolo in #preview.
+   */
+  function updatePreview() {
+    const mdText = document.getElementById("md-input").value;
+    const html = marked.parse(mdText);
+    document.getElementById("preview").innerHTML = html;
+  }
+
+  /**
+   * Estrae il titolo dal testo Markdown, cercando la prima riga
+   * che inizia con "# ".
+   * Restituisce null se non ne trova uno.
+   */
+  function getTitleFromMarkdown(mdText) {
+    // Dividiamo in righe
+    const lines = mdText.trim().split('\n');
+    for (let line of lines) {
+      line = line.trim();
+      // Se la riga inizia con "# " (h1 in Markdown)
+      if (line.startsWith('# ')) {
+        // Restituiamo il testo dopo "# "
+        return line.substring(2).trim();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Esporta il contenuto in PDF:
+   * - Se nel markdown non c'è un titolo, chiede all'utente di inserirlo
+   * - Inserisce il titolo sia nel documento (se mancava) sia nell'header del PDF
+   * - Aggiunge numerazione di pagina in basso
+   * - Disegna due linee: una sotto l’header e una sopra il footer
+   */
+  function exportPDF() {
+    // Leggiamo il markdown corrente
+    let mdText = document.getElementById("md-input").value;
+
+    // Cerchiamo il titolo
+    let docTitle = getTitleFromMarkdown(mdText);
+
+    if (!docTitle) {
+      // Nessun titolo trovato: chiediamo all'utente
+      docTitle = prompt("Inserisci un titolo per il documento:", "Titolo di default");
+      if (docTitle && docTitle.trim() !== "") {
+        // Prependiamo "# <titolo>" all'inizio del testo
+        mdText = "# " + docTitle.trim() + "\n\n" + mdText;
+        
+        // Aggiorniamo anche il textarea e l’anteprima
+        document.getElementById("md-input").value = mdText;
+        updatePreview();
+      } else {
+        // Se l'utente annulla o lascia vuoto, usiamo un fallback
+        docTitle = "Documento_senza_titolo";
+      }
+    }
+
+    // Opzioni di html2pdf
+    const opt = {
+      margin: [100, 50, 80, 50], // top, left, bottom, right (pt)
+      filename: 'temp.pdf',     // Nome temporaneo (verrà sovrascritto dopo)
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css'] }
+    };
+
+    // Creiamo il PDF e, prima di salvarlo, aggiungiamo header, footer e linee
+    html2pdf()
+      .set(opt)
+      .from(document.getElementById("preview"))
+      .toPdf()
+      .get('pdf')
+      .then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+
+          // Dimensioni della pagina
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+
+          // HEADER: Titolo in alto (centrato)
+          pdf.setFontSize(10);
+          const headerY = 60;
+          pdf.text(docTitle, pageWidth / 2, headerY, { align: 'center' });
+
+          // Linea sotto l’header
+          pdf.setDrawColor(0);      // nero
+          pdf.setLineWidth(0.5);    // spessore linea
+          pdf.line(50, headerY + 10, pageWidth - 50, headerY + 10);
+
+          // FOOTER: numerazione pagina (centrata in basso)
+          const footerText = `Pagina ${i} di ${totalPages}`;
+          const footerY = pageHeight - 40;
+
+          // Linea sopra il footer
+          pdf.line(50, footerY - 10, pageWidth - 50, footerY - 10);
+
+          // Poi scriviamo il testo del footer
+          pdf.text(footerText, pageWidth / 2, footerY, { align: 'center' });
+        }
+      })
+      // Salvataggio finale: usiamo il titolo come nome file (al posto di 'temp.pdf')
+      .save(docTitle.replaceAll(' ', '_') + '.pdf');
+  }
+
+  window.onload = updatePreview;
+</script>
+
+</body>
+</html>

@@ -53,27 +53,29 @@
 	size: A4 portrait;
 	margin: 50pt;
 	}
-	
+		
     /* Evita di spezzare paragrafi e titoli, e giustifica i paragrafi */
-    /* .preview-content p, */
+	.preview-content p,
     .preview-content h1,
     .preview-content h2,
     .preview-content h3,
     .preview-content h4,
     .preview-content h5,
     .preview-content h6 {
+	  text-align: justify;
       page-break-inside: avoid; /* Evita la divisione del blocco */
       -webkit-page-break-inside: avoid;
     }
-    .preview-content p {
+		
+	.preview-content p {
       text-align: justify;
 	  font-size: 12pt;
-      line-height: 16pt; /* sarebbe 16.86pt - ho messo un valore vicino */
+      line-height: 17pt; /* sarebbe 16.86pt - ho messo un valore vicino */
       orphans: 1;
       widows: 1;
       page-break-inside: avoid;	  
     }
-	
+		
 	/* Per forzare una nuova pagina con un certo tag, ad esempio h2: */
     .preview-content h2 {
       page-break-before: always;
@@ -211,7 +213,7 @@ The document may not have a prefectly formatted layout.
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css'] }
+      // pagebreak: { mode: ['css'] }
     };
 
     // Creiamo il PDF e, prima di salvarlo, aggiungiamo header, footer e linee
